@@ -1,0 +1,20 @@
+Metadata-Version: 2.2
+Name: ValidMLInference
+Version: 0.0.1
+Summary: RegLabels
+Author-email: Konrad Kurczynski <konrad.kurczynski@yale.edu>, Timothy Christensen <timothy.christensen@yale.edu>
+License: MIT
+Project-URL: Homepage, https://github.com/KonradKurczynski/ValidMLInference
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy
+Requires-Dist: scipy
+Requires-Dist: jax
+Requires-Dist: jaxopt
+Requires-Dist: numdifftools
+
+# ValidMLInference
+ Source code for the ValidMLInference Python Package
