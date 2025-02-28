@@ -23,5 +23,4 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/timothymchristensen/RegLabels.jl/blob/main/LICENSE "
-Issues = "https://github.com/timothymchristensen/RegLabels.jl/blob/main/LICENSE "
+Homepage = "https://github.com/KonradKurczynski/ValidMLInference"
