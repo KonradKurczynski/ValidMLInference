@@ -26,3 +26,26 @@ This procedure first computes the standard OLS estimator on a potentially mismea
 
 
  ## one_step_unlabeled
+
+This method jointly estimates the upstream (measurement) and downstream (regression) models using only the unlabeled likelihood. Leveraging JAX for automatic differentiation and optimization, it minimizes the negative log-likelihood to obtain the regression coefficients. The variance is then approximated via the inverse Hessian at the optimum.
+
+    Parameters
+    ----------
+    Y : array_like, shape (n,)
+        Response variable vector.
+    Xhat : array_like, shape (n, d)
+        Design matrix constructed from AI/ML-generated regressors.
+    homoskedastic : bool, optional (default: False)
+        If True, assumes a common error variance; otherwise, separate error variances are estimated.
+    distribution : optional
+        Reserved for interface compatibility. This parameter is not actively used in this implementation.
+
+    Returns
+    -------
+    b : ndarray, shape (d,)
+        Estimated regression coefficients extracted from the optimized parameter vector.
+    V : ndarray, shape (d, d)
+        Estimated variance-covariance matrix for the regression coefficients, computed as the inverse 
+        of the Hessian of the objective function.
+
+
