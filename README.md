@@ -13,7 +13,7 @@ This procedure first computes the standard OLS estimator on a design matrix (Xha
     fpr : float
         False positive rate of misclassification, used to correct the OLS estimates.
     m : int or float
-        Size of the external sample used to estimate the classifier's false-positive rate. Can be set to `'inf'` when the false-positive rate is known exactly.
+        Size of the external sample used to estimate the classifier's false-positive rate. Can be set to 'inf' when the false-positive rate is known exactly.
 
     Returns
     -------
