@@ -229,8 +229,28 @@ def ols_jax(Y, X, se=True):
         return b, V, sXX
     else:
         return b
+    
+def ols_bcm(Y, Xhat, fpr, m):
+    """
+    OLS estimator with multiplicative bias correction.
+    
+    Here the bias‐corrected estimate is
+         b_bc = inv(I - fpr*Γ) b,
+    with a corresponding finite–sample adjustment to the variance.
+    """
+    Xhat = np.asarray(Xhat)
+    d = Xhat.shape[1]
+    _b, _V, sXX = ols(Y, Xhat)
+    A = np.zeros((d, d))
+    A[0, 0] = 1.0
+    Gamma = np.linalg.solve(sXX, A)
+    I = np.eye(d)
+    b = np.linalg.inv(I - fpr * Gamma) @ _b
+    V = np.linalg.inv(I - fpr * Gamma) @ _V @ np.linalg.inv(I - fpr * Gamma).T + \
+        fpr * (1.0 - fpr) * (Gamma @ (_V + np.outer(b, b)) @ Gamma.T) / m
+    return b, V
 
-#jax compatible distribution functions    
+#Jax-compatible distribution functions    
 def log_normal_pdf(x, loc, scale):
     """Log–density of a Normal distribution."""
     return -0.5 * jnp.log(2 * jnp.pi) - jnp.log(scale) - 0.5 * jnp.square((x - loc) / scale)
