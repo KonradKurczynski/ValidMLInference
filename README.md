@@ -35,8 +35,8 @@ This method jointly estimates the upstream (measurement) and downstream (regress
         Design matrix constructed from AI/ML-generated regressors.
     homoskedastic : bool, optional (default: False)
         If True, assumes a common error variance; otherwise, separate error variances are estimated.
-    distribution : optional
-        Reserved for interface compatibility. This parameter is not actively used in this implementation.
+    distribution : allows to specify the distribution of error terms, optional. By default, it's Normal(0,1).
+        A custom distribution can be passed down as any jax-compatible PDF function that takes inputs (x, loc, scale).
 
     Returns
     -------
