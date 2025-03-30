@@ -5,10 +5,9 @@ import numdifftools as nd
 import jax
 import jax.numpy as jnp
 from jax import grad, jit, hessian
-from scipy.optimize import minimize
 from jaxopt import LBFGS
 
-#OLS with additive bias correction 
+# OLS with additive bias correction 
 def ols_bca(Y, Xhat, fpr, m):
     """
     OLS estimator with additive bias correction.
@@ -30,20 +29,31 @@ def ols_bca(Y, Xhat, fpr, m):
     V = (I + fpr * Gamma) @ _V @ (I + fpr * Gamma).T + fpr * (1.0 - fpr) * (Gamma @ (_V + np.outer(b, b)) @ Gamma.T) / m
     return b, V
 
-#One–step estimation using only unlabeled data using JAX
+# One–step estimation using only unlabeled data using JAX
 @jit
 def one_step_unlabeled(Y, Xhat, homoskedastic=False, distribution=None):
     """
     One–step estimator based solely on the unlabeled likelihood (JAX version).
 
-    Parameters:
-      Y: response vector.
-      Xhat: design matrix.
-      homoskedastic: Boolean flag.
+    Parameters
+    ----------
+    Y : array_like, shape (n,)
+        Response variable vector.
+    Xhat : array_like, shape (n, d)
+        Design matrix constructed from AI/ML-generated regressors.
+    homoskedastic : bool, optional (default: False)
+        If True, assumes a common error variance; otherwise, separate error variances are estimated.
+    distribution : callable, optional
+        A function that computes the probability density of the distribution to be used in the likelihood.
+        It should have the signature pdf(x, loc, scale). If None, a Normal(0, 1) density is used.
       
-    Returns:
-      b: estimated coefficients.
-      V: estimated variance (from the Hessian).
+    Returns
+    -------
+    b : ndarray, shape (d,)
+        Estimated regression coefficients extracted from the optimized parameter vector.
+    V : ndarray, shape (d, d)
+        Estimated variance-covariance matrix for the regression coefficients, computed as the inverse 
+        of the Hessian of the objective function.
     """
     def objective(theta):
         return likelihood_unlabeled_jax(Y, Xhat, theta, homoskedastic, distribution)
@@ -58,21 +68,29 @@ def one_step_unlabeled(Y, Xhat, homoskedastic=False, distribution=None):
     V = jnp.linalg.inv(H)[:d, :d]
     return b, V
 
-#helper functions
+# Helper functions
 
 def likelihood_unlabeled_jax(Y, Xhat, theta, homoskedastic, distribution=None):
     """
     Negative log–likelihood for the unlabeled data (JAX version).
 
-    Parameters:
-      Y: (n,) response array.
-      Xhat: (n,d) design matrix.
-      theta: parameter vector.
-      homoskedastic: Boolean flag.
-      distribution: (unused here) kept for interface compatibility.
+    Parameters
+    ----------
+    Y : (n,) array
+        Response array.
+    Xhat : (n,d) array
+        Design matrix.
+    theta : array_like
+        Parameter vector.
+    homoskedastic : bool
+        Flag indicating whether to assume a common error variance.
+    distribution : callable, optional
+        A function that computes the probability density of the distribution to be used.
+        It should have a signature pdf(x, loc, scale). If None, a Normal(0, 1) density is used.
       
-    Returns:
-      Negative log–likelihood (scalar).
+    Returns
+    -------
+    Negative log–likelihood (scalar).
     """
     Y = jnp.ravel(Y)
     d = Xhat.shape[1]
@@ -80,13 +98,17 @@ def likelihood_unlabeled_jax(Y, Xhat, theta, homoskedastic, distribution=None):
     # Compute w11 from the raw parameters
     w11 = 1.0 / (1.0 + jnp.exp(theta[d]) + jnp.exp(theta[d+1]) + jnp.exp(theta[d+2]))
     mu = Xhat @ b  # (n,)
+    
+    # Choose the density function: default to normal_pdf if no custom distribution provided.
+    pdf = normal_pdf if distribution is None else distribution
+
     # For each observation we have two cases depending on the first column of Xhat.
     # When Xhat[i,0] == 1:
-    term1_1 = w11 * normal_pdf(Y, mu, sigma1)
-    term2_1 = w10 * normal_pdf(Y, mu - b[0], sigma0)
+    term1_1 = w11 * pdf(Y, mu, sigma1)
+    term2_1 = w10 * pdf(Y, mu - b[0], sigma0)
     # When Xhat[i,0] == 0:
-    term1_0 = w01 * normal_pdf(Y, mu + b[0], sigma1)
-    term2_0 = w00 * normal_pdf(Y, mu, sigma0)
+    term1_0 = w01 * pdf(Y, mu + b[0], sigma1)
+    term2_0 = w00 * pdf(Y, mu, sigma0)
     indicator = Xhat[:, 0]
     # Use jnp.where to select the correct mixture for each observation.
     log_term = jnp.where(indicator == 1.0,
@@ -98,19 +120,18 @@ def theta_to_pars_jax(theta, d, homoskedastic):
     """
     Transforms the parameter vector theta into interpretable parameters.
     
-    Parameters:
-      theta: a 1D array containing the raw parameters.
-      d: number of coefficients in b.
-      homoskedastic: if True, use a single sigma.
+    Parameters
+    ----------
+    theta : 1D array
+        Raw parameter vector.
+    d : int
+        Number of coefficients in b.
+    homoskedastic : bool
+        If True, use a single sigma.
       
-    Returns:
-      b, w00, w01, w10, sigma0, sigma1
-      
-    In this parameterization the first d elements are b;
-    the next three are v, from which we compute frequencies:
-         exp(v) / (1 + sum(exp(v)))
-    with the fourth frequency given by
-         w11 = 1/(1+exp(v[0])+exp(v[1])+exp(v[2])).
+    Returns
+    -------
+    b, w00, w01, w10, sigma0, sigma1
     """
     b = theta[:d]
     v = theta[d:d+3]
@@ -124,13 +145,18 @@ def get_starting_values_unlabeled_jax(Y, Xhat, homoskedastic):
     """
     Computes starting values based solely on the unlabeled data (JAX version).
     
-    Parameters:
-      Y: response vector.
-      Xhat: design matrix.
-      homoskedastic: Boolean flag.
+    Parameters
+    ----------
+    Y : array_like
+        Response vector.
+    Xhat : array_like
+        Design matrix.
+    homoskedastic : bool
+        Flag indicating whether to assume a common error variance.
       
-    Returns:
-      A 1D JAX array with initial parameter estimates.
+    Returns
+    -------
+    A 1D JAX array with initial parameter estimates.
     """
     Y = jnp.ravel(Y)
     Xhat = jnp.asarray(Xhat)
@@ -206,12 +232,18 @@ def ols_jax(Y, X, se=True):
     """
     Ordinary Least Squares estimator.
 
-    Parameters:
-      Y: (n,) array (response)
-      X: (n,d) array (design matrix)
-      se: whether to compute standard errors using a heteroskedastic–consistent formula.
-    Returns:
-      b [, V, sXX]: b is the OLS coefficient; if se==True, V is the variance-covariance matrix.
+    Parameters
+    ----------
+    Y : (n,) array
+        Response vector.
+    X : (n,d) array
+        Design matrix.
+    se : bool, optional
+        Whether to compute standard errors using a heteroskedastic–consistent formula.
+      
+    Returns
+    -------
+    b [, V, sXX]: b is the OLS coefficient; if se==True, V is the variance-covariance matrix.
     """
     Y = jnp.ravel(Y)
     X = jnp.asarray(X)
@@ -250,7 +282,7 @@ def ols_bcm(Y, Xhat, fpr, m):
         fpr * (1.0 - fpr) * (Gamma @ (_V + np.outer(b, b)) @ Gamma.T) / m
     return b, V
 
-#Jax-compatible distribution functions    
+# Jax-compatible distribution functions    
 def log_normal_pdf(x, loc, scale):
     """Log–density of a Normal distribution."""
     return -0.5 * jnp.log(2 * jnp.pi) - jnp.log(scale) - 0.5 * jnp.square((x - loc) / scale)
