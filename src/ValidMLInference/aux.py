@@ -10,13 +10,26 @@ from jaxopt import LBFGS
 # OLS with additive bias correction 
 def ols_bca(Y, Xhat, fpr, m):
     """
-    OLS estimator with additive bias correction.
-    
-    Computes the OLS estimator on Xhat, then uses the matrix
-         A = [1,0,…,0]^T[1,0,…,0]  (i.e. A[0,0]=1)
-    to obtain Γ = inv(sXX)*A. The bias‐corrected estimate is
-         b_bc = b + fpr * (Γ b)
-    and its variance is adjusted with a finite–sample term.
+    Additive bias-corrected OLS estimator for AI/ML-generated regressors.
+
+    Parameters
+    ----------
+    Y : array_like, shape (n,)
+        Dependent variable vector.
+    Xhat : array_like, shape (n, d)
+        Design matrix of generated regressors and any additional controls.
+    fpr : float
+        Estimated false-positive rate (κ-hat), quantifying measurement error magnitude.
+    m : int
+        Validation subsample size used to estimate finite-sample correction terms.
+
+    Returns
+    -------
+    b : ndarray, shape (d,)
+        Bias-corrected OLS coefficients: b + fpr * (Γ @ b).
+    V : ndarray, shape (d, d)
+        Variance-covariance matrix of b, adjusted for both sampling error and
+        finite-sample measurement-error correction.
     """
     Xhat = np.asarray(Xhat)
     d = Xhat.shape[1]
@@ -28,6 +41,42 @@ def ols_bca(Y, Xhat, fpr, m):
     I = np.eye(d)
     V = (I + fpr * Gamma) @ _V @ (I + fpr * Gamma).T + fpr * (1.0 - fpr) * (Gamma @ (_V + np.outer(b, b)) @ Gamma.T) / m
     return b, V
+
+def ols_bcm(Y, Xhat, fpr, m):
+    """
+    Multiplicative bias-corrected OLS estimator for AI/ML-generated regressors.
+
+    Parameters
+    ----------
+    Y : array_like, shape (n,)
+        Dependent variable vector.
+    Xhat : array_like, shape (n, d)
+        Design matrix of generated regressors and any additional controls.
+    fpr : float
+        Estimated false-positive rate (κ-hat), quantifying measurement error magnitude.
+    m : int
+        Validation subsample size used to estimate finite-sample correction terms.
+
+    Returns
+    -------
+    b : ndarray, shape (d,)
+        Bias-corrected OLS coefficients: inv(I - fpr*Γ) @ b.
+    V : ndarray, shape (d, d)
+        Variance-covariance matrix of b, adjusted for multiplicative correction and
+        finite-sample measurement-error correction.
+    """
+    Xhat = np.asarray(Xhat)
+    d = Xhat.shape[1]
+    _b, _V, sXX = ols(Y, Xhat)
+    A = np.zeros((d, d))
+    A[0, 0] = 1.0
+    Gamma = np.linalg.solve(sXX, A)
+    I = np.eye(d)
+    b = np.linalg.inv(I - fpr * Gamma) @ _b
+    V = np.linalg.inv(I - fpr * Gamma) @ _V @ np.linalg.inv(I - fpr * Gamma).T + \
+        fpr * (1.0 - fpr) * (Gamma @ (_V + np.outer(b, b)) @ Gamma.T) / m
+    return b, V
+
 
 # One–step estimation using only unlabeled data using JAX
 @jit
@@ -69,7 +118,6 @@ def one_step_unlabeled(Y, Xhat, homoskedastic=False, distribution=None):
     return b, V
 
 # Helper functions
-
 def likelihood_unlabeled_jax(Y, Xhat, theta, homoskedastic, distribution=None):
     """
     Negative log–likelihood for the unlabeled data (JAX version).
@@ -261,26 +309,6 @@ def ols_jax(Y, X, se=True):
         return b, V, sXX
     else:
         return b
-    
-def ols_bcm(Y, Xhat, fpr, m):
-    """
-    OLS estimator with multiplicative bias correction.
-    
-    Here the bias‐corrected estimate is
-         b_bc = inv(I - fpr*Γ) b,
-    with a corresponding finite–sample adjustment to the variance.
-    """
-    Xhat = np.asarray(Xhat)
-    d = Xhat.shape[1]
-    _b, _V, sXX = ols(Y, Xhat)
-    A = np.zeros((d, d))
-    A[0, 0] = 1.0
-    Gamma = np.linalg.solve(sXX, A)
-    I = np.eye(d)
-    b = np.linalg.inv(I - fpr * Gamma) @ _b
-    V = np.linalg.inv(I - fpr * Gamma) @ _V @ np.linalg.inv(I - fpr * Gamma).T + \
-        fpr * (1.0 - fpr) * (Gamma @ (_V + np.outer(b, b)) @ Gamma.T) / m
-    return b, V
 
 # Jax-compatible distribution functions    
 def log_normal_pdf(x, loc, scale):
