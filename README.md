@@ -1,5 +1,9 @@
 # ValidMLInference
- This repository hosts the code for the **ValidMLInference** package, implementing bias corrction methods described in [Battaglia, Christensen, Hansen & Sacher (2024)](https://arxiv.org/abs/2402.15585). The two core functions are: 
+ This repository hosts the code for the **ValidMLInference** package, implementing bias corrction methods described in [Battaglia, Christensen, Hansen & Sacher (2024)](https://arxiv.org/abs/2402.15585). 
+
+ ## Getting Started 
+This package can be installed with any default package manager, for instance, by typing
+``` > pip install ValidMLInference ```  into the terminal. The core functions of the package are:
 
  ## ols_bca
 This procedure first computes the standard OLS estimator on a design matrix (Xhat), the first column of which contains AI/ML-generated binary labels, and then applies an additive correction based on an estimate (fpr) of the false-positive rate computed externally. The method also adjusts the variance estimator with a finite-sample correction term to account for the uncertainty in the bias estimation.
