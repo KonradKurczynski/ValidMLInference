@@ -1,5 +1,5 @@
 # ValidMLInference
- This repository hosts the code for the **ValidMLInference** package, implementing bias corrction methods described in [Battaglia, Christensen, Hansen & Sacher (2024)](https://arxiv.org/abs/2402.15585). A full example of using this package can be found in the file [example 1.ipynb](https://github.com/KonradKurczynski/ValidMLInference/blob/main/example%201.ipynb).
+ This repository hosts the code for the **ValidMLInference** package, implementing bias corrction methods described in [Battaglia, Christensen, Hansen & Sacher (2024)](https://arxiv.org/abs/2402.15585). <mark> A sample application of this package can be found in the file [example 1.ipynb](https://github.com/KonradKurczynski/ValidMLInference/blob/main/example%201.ipynb). 
 
  ## Getting Started 
 This package can be installed with any default package manager, for instance, by typing
