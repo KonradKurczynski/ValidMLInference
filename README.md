@@ -50,3 +50,261 @@ This method jointly estimates the upstream (measurement) and downstream (regress
         Estimated variance-covariance matrix for the regression coefficients, computed as the inverse 
         of the Hessian of the objective function.
 
+# ValidMLInference: example 1
+
+
+```python
+from ValidMLInference import ols, ols_bca, ols_bcm, one_step_unlabeled
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from math import sqrt
+```
+
+### Parameters for simulation
+
+
+```python
+nsim    = 1000
+n       = 16000      # training size
+m       = 1000       # test   size
+p       = 0.05       # P(X=1)
+kappa   = 1.0        # measurement‐error strength
+fpr     = kappa / sqrt(n)
+
+β0, β1       = 10.0, 1.0
+σ0, σ1       = 0.3, 0.5
+
+# Bayesian parameters for the false positive rate for BCA and BCM bias correction
+α = [0.0, 0.5, 0.5]
+β = [0.0, 2.0, 4.0]
+
+# pre­allocate storage: (sim × 9 methods × 2 coefficients)
+B = np.zeros((nsim, 9, 2))
+S = np.zeros((nsim, 9, 2))
+```
+
+### Data Generation
+
+
+```python
+def generate_data(n, m, p, fpr, β0, β1, σ0, σ1):
+    """
+    Generates simulated data.
+    
+    Parameters:
+      n, m: Python integers (number of training and test samples)
+      p, p1: floats
+      beta0, beta1: floats
+    
+    Returns:
+      A tuple: ((train_Y, train_X), (test_Y, test_Xhat, test_X))
+      where train_X and test_Xhat include a constant term as the second column.
+    """
+    N = n + m
+    X    = np.zeros(N)
+    Xhat = np.zeros(N)
+    u    = np.random.rand(N)
+
+    for j in range(N):
+        if   u[j] <= fpr:
+            X[j] = 1.0
+        elif u[j] <= 2*fpr:
+            Xhat[j] = 1.0
+        elif u[j] <= p + fpr:
+            X[j] = 1.0
+            Xhat[j] = 1.0
+
+    eps = np.random.randn(N)
+    Y   = β0 + β1*X + (σ1*X + σ0*(1.0 - X))*eps
+
+    # split into train vs test
+    train_Y   = Y[:n]
+    train_X   = np.column_stack((Xhat[:n], np.ones(n)))
+    test_Y    = Y[n:]
+    test_Xhat = np.column_stack((Xhat[n:], np.ones(m)))
+    test_X    = np.column_stack((X[n:],    np.ones(m)))
+
+    return (train_Y, train_X), (test_Y, test_Xhat, test_X)
+```
+
+### Bias-correction stage
+
+
+```python
+def update_results(B, S, b, V, i, method_idx): 
+    """Store coef b and se=sqrt(diag(V))."""
+    for j in (0,1):
+        B[i, method_idx, j] = b[j]
+        S[i, method_idx, j] = np.sqrt(max(V[j,j], 0.0))
+
+for i in range(nsim):
+    (tY, tX), (eY, eXhat, eX) = generate_data(
+        n, m, p, fpr, β0, β1, σ0, σ1
+    )
+
+    # 1) OLS on unlabeled (Xhat)
+    b, V, _ = ols(tY, tX)
+    update_results(B, S, b, V, i, 0)
+
+    # 2) OLS on labeled (true X)
+    b, V, _ = ols(eY, eX)
+    update_results(B, S, b, V, i, 1)
+
+    # 3–8) Additive & multiplicative bias corrections
+    fpr_hat = np.mean(eXhat[:,0] * (1.0 - eX[:,0]))
+    for j in range(3):
+        fpr_bayes = (fpr_hat*m + α[j]) / (m + α[j] + β[j])
+        b, V = ols_bca(tY, tX, fpr_bayes, m)
+        update_results(B, S, b, V, i, 2 + j)
+        b, V = ols_bcm(tY, tX, fpr_bayes, m)
+        update_results(B, S, b, V, i, 5 + j)
+
+    # 9) One‐step unlabeled‐only
+    b, V = one_step_unlabeled(tY, tX)
+    update_results(B, S, b, V, i, 8)
+    
+    if (i+1) % 100 == 0:
+        print(f"Done {i+1}/{nsim} sims")
+
+```
+
+    Done 100/1000 sims
+    Done 200/1000 sims
+    Done 300/1000 sims
+    Done 400/1000 sims
+    Done 500/1000 sims
+    Done 600/1000 sims
+    Done 700/1000 sims
+    Done 800/1000 sims
+    Done 900/1000 sims
+    Done 1000/1000 sims
+
+
+### Creating a Coverage Table
+
+
+```python
+def coverage(bgrid, b, se):
+    """
+    Computes the coverage probability for a grid of β values.
+    
+    For each value in bgrid, it computes the fraction of estimates b that
+    lie within 1.96*se of that value.
+    """
+    cvg = np.empty_like(bgrid)
+    for i, val in enumerate(bgrid):
+        cvg[i] = np.mean(np.abs(b - val) <= 1.96 * se)
+    return cvg
+```
+
+
+```python
+true_beta1 = 1.0  
+
+methods = {
+    "OLS ĥ":  0,
+    "OLS θ̂": 1,
+    "BCA‑0": 2,
+    "BCA‑1": 3,
+    "BCA‑2": 4,
+    "BCM‑0": 5,
+    "BCM‑1": 6,
+    "BCM‑2": 7,
+    "OSU":    8,
+}
+
+cov_dict = {}
+for name, col in methods.items():
+    slopes = B[:, col, 0]    
+    ses   = S[:, col, 0]     
+    # fraction of sims whose 95% CI covers true_beta1
+    cov_dict[name] = np.mean(np.abs(slopes - true_beta1) <= 1.96 * ses)
+
+cov_series = pd.Series(cov_dict, name=f"Coverage @ β₁={true_beta1}")
+cov_series
+```
+
+
+
+
+    OLS ĥ     0.000
+    OLS θ̂    0.937
+    BCA‑0     0.881
+    BCA‑1     0.911
+    BCA‑2     0.910
+    BCM‑0     0.887
+    BCM‑1     0.911
+    BCM‑2     0.911
+    OSU       0.948
+    Name: Coverage @ β₁=1.0, dtype: float64
+
+
+
+### Recovering Coefficients and Standard Errors
+
+Recall that the dataframe B stores our coefficient results while the dataframe S stores our standard errors. We can summarize our simulation results by averaging over the columns which store the results for the different simulation methods.
+
+
+```python
+nsim, nmethods, ncoeff = B.shape
+
+method_names = [
+    "OLS (unlabeled)",
+    "OLS (labeled)",
+    "BCA (j=0)",
+    "BCA (j=1)",
+    "BCA (j=2)",
+    "BCM (j=0)",
+    "BCM (j=1)",
+    "BCM (j=2)",
+    "1-Step"
+]
+
+results = []
+
+for i in range(nmethods):
+    row = {"Method": method_names[i]}
+    
+    for j, coef in enumerate(["Beta1", "Beta0"]):
+        estimates = B[:, i, j]
+        ses = S[:, i, j]
+        mean_est = np.nanmean(estimates)
+        mean_se = np.nanmean(ses)
+        lower = np.percentile(estimates, 2.5)
+        upper = np.percentile(estimates, 97.5)
+        
+        row[f"Est({coef})"] = f"{mean_est:.3f}"
+        row[f"SE({coef})"] = f"{mean_se:.3f}"
+        row[f"95% CI ({coef})"] = f"[{lower:.3f}, {upper:.3f}]"
+    
+    results.append(row)
+
+df_results = pd.DataFrame(results).set_index("Method")
+print(df_results)
+```
+
+                    Est(Beta1) SE(Beta1)  95% CI (Beta1) Est(Beta0) SE(Beta0)  \
+    Method                                                                      
+    OLS (unlabeled)      0.835     0.021  [0.793, 0.875]     10.008     0.003   
+    OLS (labeled)        1.000     0.071  [0.856, 1.151]     10.000     0.010   
+    BCA (j=0)            0.972     0.062  [0.870, 1.084]     10.001     0.004   
+    BCA (j=1)            0.980     0.064  [0.878, 1.092]     10.001     0.004   
+    BCA (j=2)            0.980     0.064  [0.878, 1.092]     10.001     0.004   
+    BCM (j=0)            1.004     0.064  [0.874, 1.175]     10.000     0.004   
+    BCM (j=1)            1.016     0.067  [0.885, 1.191]      9.999     0.004   
+    BCM (j=2)            1.016     0.067  [0.885, 1.190]      9.999     0.004   
+    1-Step               1.000     0.031  [0.939, 1.058]     10.000     0.002   
+    
+                       95% CI (Beta0)  
+    Method                             
+    OLS (unlabeled)  [10.003, 10.013]  
+    OLS (labeled)     [9.981, 10.020]  
+    BCA (j=0)         [9.994, 10.008]  
+    BCA (j=1)         [9.993, 10.008]  
+    BCA (j=2)         [9.993, 10.008]  
+    BCM (j=0)         [9.990, 10.007]  
+    BCM (j=1)         [9.989, 10.007]  
+    BCM (j=2)         [9.989, 10.007]  
+    1-Step            [9.995, 10.005]  
+
