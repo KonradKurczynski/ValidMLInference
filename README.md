@@ -72,8 +72,8 @@ This method jointly estimates the upstream (measurement) and downstream (regress
         Estimated variance-covariance matrix for the regression coefficients, computed as the inverse 
         of the Hessian of the objective function.
 
-# ValidMLInference: example 1
 
+# ValidMLInference: example 1
 
 ```python
 from ValidMLInference import ols, ols_bca, ols_bcm, one_step_unlabeled
@@ -225,8 +225,8 @@ def coverage(bgrid, b, se):
 true_beta1 = 1.0  
 
 methods = {
-    "OLS ĥ":  0,
-    "OLS θ̂": 1,
+    "OLS θ̂":  0,
+    "OLS θ": 1,
     "BCA‑0": 2,
     "BCA‑1": 3,
     "BCA‑2": 4,
@@ -272,8 +272,8 @@ Recall that the dataframe B stores our coefficient results while the dataframe S
 nsim, nmethods, ncoeff = B.shape
 
 method_names = [
-    "OLS (unlabeled)",
-    "OLS (labeled)",
+    "OLS (θ̂)",
+    "OLS (θ)",
     "BCA (j=0)",
     "BCA (j=1)",
     "BCA (j=2)",
