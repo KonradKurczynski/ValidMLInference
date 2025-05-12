@@ -26,6 +26,28 @@ This procedure first computes the standard OLS estimator on a design matrix (Xha
     V : ndarray, shape (d, d)
         Adjusted variance-covariance matrix for the bias-corrected estimator.
 
+ ## ols_bcm
+This procedure first computes the standard OLS estimator on a design matrix (Xhat), the first column of which contains AI/ML-generated binary labels, and then applies a multiplicative correction based on an estimate (fpr) of the false-positive rate computed externally. The method also adjusts the variance estimator with a finite-sample correction term to account for the uncertainty in the bias estimation.
+
+    Parameters
+    ----------
+    Y : array_like, shape (n,)
+        Response variable vector.
+    Xhat : array_like, shape (n, d)
+        Design matrix, the first column of which contains the AI/ML-generated binary covariates.
+    fpr : float
+        False positive rate of misclassification, used to correct the OLS estimates.
+    m : int or float
+        Size of the external sample used to estimate the classifier's false-positive rate. Can be set to 'inf' when the false-positive rate is known exactly.
+
+    Returns
+    -------
+    b : ndarray, shape (d,)
+        Bias-corrected regression coefficient estimates.
+    V : ndarray, shape (d, d)
+        Adjusted variance-covariance matrix for the bias-corrected estimator.
+
+
 
  ## one_step_unlabeled
 
