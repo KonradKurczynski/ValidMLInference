@@ -82,7 +82,7 @@ This method jointly estimates the upstream (measurement) and downstream (regress
 # ValidMLInference: example 1
 
 ```python
-from ValidMLInference import ols, ols_bca, ols_bcm, one_step_unlabeled
+from ValidMLInference import ols, ols_bca, ols_bcm, one_step
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -95,7 +95,7 @@ from math import sqrt
 ```python
 nsim    = 1000
 n       = 16000      # training size
-m       = 1000       # test   size
+m       = 1000       # test size
 p       = 0.05       # P(X=1)
 kappa   = 1.0        # measurement‐error strength
 fpr     = kappa / sqrt(n)
@@ -119,12 +119,12 @@ S = np.zeros((nsim, 9, 2))
 def generate_data(n, m, p, fpr, β0, β1, σ0, σ1):
     """
     Generates simulated data.
-    
+
     Parameters:
       n, m: Python integers (number of training and test samples)
       p, p1: floats
       beta0, beta1: floats
-    
+
     Returns:
       A tuple: ((train_Y, train_X), (test_Y, test_Xhat, test_X))
       where train_X and test_Xhat include a constant term as the second column.
@@ -148,10 +148,11 @@ def generate_data(n, m, p, fpr, β0, β1, σ0, σ1):
 
     # split into train vs test
     train_Y   = Y[:n]
-    train_X   = np.column_stack((Xhat[:n], np.ones(n)))
     test_Y    = Y[n:]
-    test_Xhat = np.column_stack((Xhat[n:], np.ones(m)))
-    test_X    = np.column_stack((X[n:],    np.ones(m)))
+
+    train_X   = Xhat[:n].reshape(-1, 1)
+    test_Xhat = Xhat[n:].reshape(-1, 1)
+    test_X    = X[n:].reshape(-1, 1)
 
     return (train_Y, train_X), (test_Y, test_Xhat, test_X)
 ```
@@ -160,11 +161,16 @@ def generate_data(n, m, p, fpr, β0, β1, σ0, σ1):
 
 
 ```python
-def update_results(B, S, b, V, i, method_idx): 
-    """Store coef b and se=sqrt(diag(V))."""
-    for j in (0,1):
+def update_results(B, S, b, V, i, method_idx):
+    """
+    Store coefficient estimates and their SEs into B and S.
+    B,S have shape (nsim, nmethods, max_n_coefs).
+    b is length d <= max_n_coefs.  V is d×d.
+    """
+    d = b.shape[0]
+    for j in range(d):
         B[i, method_idx, j] = b[j]
-        S[i, method_idx, j] = np.sqrt(max(V[j,j], 0.0))
+        S[i, method_idx, j] = np.sqrt(max(V[j, j], 0.0))
 
 for i in range(nsim):
     (tY, tX), (eY, eXhat, eX) = generate_data(
@@ -172,11 +178,11 @@ for i in range(nsim):
     )
 
     # 1) OLS on unlabeled (Xhat)
-    b, V, _ = ols(tY, tX)
+    b, V, _ = ols(tY, tX, intercept = True)
     update_results(B, S, b, V, i, 0)
 
     # 2) OLS on labeled (true X)
-    b, V, _ = ols(eY, eX)
+    b, V, _ = ols(eY, eX, intercept = True)
     update_results(B, S, b, V, i, 1)
 
     # 3–8) Additive & multiplicative bias corrections
@@ -189,9 +195,9 @@ for i in range(nsim):
         update_results(B, S, b, V, i, 5 + j)
 
     # 9) One‐step unlabeled‐only
-    b, V = one_step_unlabeled(tY, tX)
+    b, V = one_step(tY, tX)
     update_results(B, S, b, V, i, 8)
-    
+
     if (i+1) % 100 == 0:
         print(f"Done {i+1}/{nsim} sims")
 
@@ -216,7 +222,7 @@ for i in range(nsim):
 def coverage(bgrid, b, se):
     """
     Computes the coverage probability for a grid of β values.
-    
+
     For each value in bgrid, it computes the fraction of estimates b that
     lie within 1.96*se of that value.
     """
@@ -228,7 +234,7 @@ def coverage(bgrid, b, se):
 
 
 ```python
-true_beta1 = 1.0  
+true_beta1 = 1.0
 
 methods = {
     "OLS θ̂":  0,
@@ -244,8 +250,8 @@ methods = {
 
 cov_dict = {}
 for name, col in methods.items():
-    slopes = B[:, col, 0]    
-    ses   = S[:, col, 0]     
+    slopes = B[:, col, 0]
+    ses   = S[:, col, 0]
     # fraction of sims whose 95% CI covers true_beta1
     cov_dict[name] = np.mean(np.abs(slopes - true_beta1) <= 1.96 * ses)
 
@@ -256,15 +262,15 @@ cov_series
 
 
 
-    OLS ĥ     0.000
-    OLS θ̂    0.937
-    BCA‑0     0.881
-    BCA‑1     0.911
-    BCA‑2     0.910
+    OLS θ̂    0.000
+    OLS θ     0.941
+    BCA‑0     0.878
+    BCA‑1     0.909
+    BCA‑2     0.907
     BCM‑0     0.887
-    BCM‑1     0.911
-    BCM‑2     0.911
-    OSU       0.948
+    BCM‑1     0.906
+    BCM‑2     0.908
+    OSU       0.955
     Name: Coverage @ β₁=1.0, dtype: float64
 
 
@@ -312,27 +318,27 @@ df_results = pd.DataFrame(results).set_index("Method")
 print(df_results)
 ```
 
-                    Est(Beta1) SE(Beta1)  95% CI (Beta1) Est(Beta0) SE(Beta0)  \
-    Method                                                                      
-    OLS (unlabeled)      0.835     0.021  [0.793, 0.875]     10.008     0.003   
-    OLS (labeled)        1.000     0.071  [0.856, 1.151]     10.000     0.010   
-    BCA (j=0)            0.972     0.062  [0.870, 1.084]     10.001     0.004   
-    BCA (j=1)            0.980     0.064  [0.878, 1.092]     10.001     0.004   
-    BCA (j=2)            0.980     0.064  [0.878, 1.092]     10.001     0.004   
-    BCM (j=0)            1.004     0.064  [0.874, 1.175]     10.000     0.004   
-    BCM (j=1)            1.016     0.067  [0.885, 1.191]      9.999     0.004   
-    BCM (j=2)            1.016     0.067  [0.885, 1.190]      9.999     0.004   
-    1-Step               1.000     0.031  [0.939, 1.058]     10.000     0.002   
+              Est(Beta1) SE(Beta1)  95% CI (Beta1) Est(Beta0) SE(Beta0)  \
+    Method                                                                
+    OLS (θ̂)       0.833     0.021  [0.791, 0.871]     10.008     0.003   
+    OLS (θ)        1.000     0.071  [0.858, 1.136]     10.000     0.010   
+    BCA (j=0)      0.971     0.062  [0.871, 1.081]     10.001     0.004   
+    BCA (j=1)      0.979     0.064  [0.880, 1.090]     10.001     0.004   
+    BCA (j=2)      0.979     0.064  [0.880, 1.089]     10.001     0.004   
+    BCM (j=0)      1.003     0.064  [0.877, 1.170]     10.000     0.004   
+    BCM (j=1)      1.016     0.067  [0.887, 1.186]      9.999     0.004   
+    BCM (j=2)      1.015     0.067  [0.887, 1.185]      9.999     0.004   
+    1-Step         0.998     0.031  [0.930, 1.054]     10.000     0.003   
     
-                       95% CI (Beta0)  
-    Method                             
-    OLS (unlabeled)  [10.003, 10.013]  
-    OLS (labeled)     [9.981, 10.020]  
-    BCA (j=0)         [9.994, 10.008]  
-    BCA (j=1)         [9.993, 10.008]  
-    BCA (j=2)         [9.993, 10.008]  
-    BCM (j=0)         [9.990, 10.007]  
-    BCM (j=1)         [9.989, 10.007]  
-    BCM (j=2)         [9.989, 10.007]  
-    1-Step            [9.995, 10.005]  
+                 95% CI (Beta0)  
+    Method                       
+    OLS (θ̂)   [10.003, 10.013]  
+    OLS (θ)     [9.982, 10.018]  
+    BCA (j=0)   [9.994, 10.008]  
+    BCA (j=1)   [9.994, 10.008]  
+    BCA (j=2)   [9.994, 10.008]  
+    BCM (j=0)   [9.990, 10.008]  
+    BCM (j=1)   [9.990, 10.007]  
+    BCM (j=2)   [9.990, 10.007]  
+    1-Step      [9.995, 10.005]  
 
