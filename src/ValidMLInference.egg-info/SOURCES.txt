@@ -1,7 +1,6 @@
 LICENSE
 README.md
 pyproject.toml
-setup.py
 src/ValidMLInference/__init__.py
 src/ValidMLInference/aux.py
 src/ValidMLInference.egg-info/PKG-INFO

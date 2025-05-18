@@ -18,6 +18,8 @@ This procedure first computes the standard OLS estimator on a design matrix (Xha
         False positive rate of misclassification, used to correct the OLS estimates.
     m : int or float
         Size of the external sample used to estimate the classifier's false-positive rate. Can be set to 'inf' when the false-positive rate is known exactly.
+    intercept : bool
+        True by default, adds an intercept term to the estimated linear model. 
 
     Returns
     -------
@@ -39,6 +41,8 @@ This procedure first computes the standard OLS estimator on a design matrix (Xha
         False positive rate of misclassification, used to correct the OLS estimates.
     m : int or float
         Size of the external sample used to estimate the classifier's false-positive rate. Can be set to 'inf' when the false-positive rate is known exactly.
+    intercept : bool
+        True by default, adds an intercept term to the estimated linear model. 
 
     Returns
     -------
@@ -63,6 +67,8 @@ This method jointly estimates the upstream (measurement) and downstream (regress
         If True, assumes a common error variance; otherwise, separate error variances are estimated.
     distribution : allows to specify the distribution of error terms, optional. By default, it's Normal(0,1).
         A custom distribution can be passed down as any jax-compatible PDF function that takes inputs (x, loc, scale).
+    intercept : bool
+        True by default, adds an intercept term to the estimated linear model. 
 
     Returns
     -------

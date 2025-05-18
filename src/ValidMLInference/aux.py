@@ -8,7 +8,7 @@ from jax import grad, jit, hessian
 from jaxopt import LBFGS
 
 # OLS with additive bias correction 
-def ols_bca(Y, Xhat, fpr, m):
+def ols_bca(Y, Xhat, fpr, m, intercept = True):
     """
     Additive bias-corrected OLS estimator for AI/ML-generated regressors.
 
@@ -22,6 +22,9 @@ def ols_bca(Y, Xhat, fpr, m):
         Estimated false-positive rate (κ-hat), quantifying measurement error magnitude.
     m : int
         Validation subsample size used to estimate finite-sample correction terms.
+    intercept : bool
+        True by default, adds an intercept term to the estimation.
+
 
     Returns
     -------
@@ -31,6 +34,12 @@ def ols_bca(Y, Xhat, fpr, m):
         Variance-covariance matrix of b, adjusted for both sampling error and
         finite-sample measurement-error correction.
     """
+    if intercept:
+        ones = np.ones((Y.shape[0], 1))
+        Xhat = np.concatenate([Xhat, ones], axis=1)
+    else:
+        Xhat = Xhat
+    
     Xhat = np.asarray(Xhat)
     d = Xhat.shape[1]
     _b, _V, sXX = ols(Y, Xhat)
@@ -42,7 +51,7 @@ def ols_bca(Y, Xhat, fpr, m):
     V = (I + fpr * Gamma) @ _V @ (I + fpr * Gamma).T + fpr * (1.0 - fpr) * (Gamma @ (_V + np.outer(b, b)) @ Gamma.T) / m
     return b, V
 
-def ols_bcm(Y, Xhat, fpr, m):
+def ols_bcm(Y, Xhat, fpr, m, intercept = True):
     """
     Multiplicative bias-corrected OLS estimator for AI/ML-generated regressors.
 
@@ -56,6 +65,8 @@ def ols_bcm(Y, Xhat, fpr, m):
         Estimated false-positive rate (κ-hat), quantifying measurement error magnitude.
     m : int
         Validation subsample size used to estimate finite-sample correction terms.
+    intercept : bool
+        True by default, adds an intercept term to the estimation.
 
     Returns
     -------
@@ -65,6 +76,12 @@ def ols_bcm(Y, Xhat, fpr, m):
         Variance-covariance matrix of b, adjusted for multiplicative correction and
         finite-sample measurement-error correction.
     """
+    if intercept:
+        ones = np.ones((Y.shape[0], 1))
+        Xhat = np.concatenate([Xhat, ones], axis=1)
+    else:
+        Xhat = Xhat
+    
     Xhat = np.asarray(Xhat)
     d = Xhat.shape[1]
     _b, _V, sXX = ols(Y, Xhat)
@@ -80,7 +97,7 @@ def ols_bcm(Y, Xhat, fpr, m):
 
 # One–step estimation using only unlabeled data using JAX
 @jit
-def one_step_unlabeled(Y, Xhat, homoskedastic=False, distribution=None):
+def one_step(Y, Xhat, homoskedastic=False, distribution=None, intercept = True):
     """
     One–step estimator based solely on the unlabeled likelihood (JAX version).
 
@@ -95,6 +112,8 @@ def one_step_unlabeled(Y, Xhat, homoskedastic=False, distribution=None):
     distribution : callable, optional
         A function that computes the probability density of the distribution to be used in the likelihood.
         It should have the signature pdf(x, loc, scale). If None, a Normal(0, 1) density is used.
+    intercept : bool
+        True by default, adds an intercept term to the estimation.
       
     Returns
     -------
@@ -104,6 +123,12 @@ def one_step_unlabeled(Y, Xhat, homoskedastic=False, distribution=None):
         Estimated variance-covariance matrix for the regression coefficients, computed as the inverse 
         of the Hessian of the objective function.
     """
+    if intercept:
+        ones = jnp.ones((Y.shape[0], 1))
+        Xhat = jnp.concatenate([Xhat, ones], axis=1)
+    else:
+        Xhat = Xhat
+
     def objective(theta):
         return likelihood_unlabeled_jax(Y, Xhat, theta, homoskedastic, distribution)
     
@@ -135,7 +160,7 @@ def likelihood_unlabeled_jax(Y, Xhat, theta, homoskedastic, distribution=None):
     distribution : callable, optional
         A function that computes the probability density of the distribution to be used.
         It should have a signature pdf(x, loc, scale). If None, a Normal(0, 1) density is used.
-      
+
     Returns
     -------
     Negative log–likelihood (scalar).
@@ -247,7 +272,7 @@ def get_starting_values_unlabeled_jax(Y, Xhat, homoskedastic):
     else:
         return jnp.concatenate([b, v, jnp.array([jnp.log(sigma0), jnp.log(sigma1)])])
 
-def ols(Y, X, se=True):
+def ols(Y, X, se=True, intercept = False):
     """
     OLS estimator with a (1/n)-scaled design matrix product.
     
@@ -258,6 +283,12 @@ def ols(Y, X, se=True):
         Ω = sum_i u_i² (x_i x_i')
         V = inv(sXX) Ω inv(sXX) / n².
     """
+    if intercept:
+        ones = np.ones((Y.shape[0], 1))
+        X = np.concatenate([X, ones], axis=1)
+    else:
+        X = X
+
     Y = np.asarray(Y).flatten()
     X = np.asarray(X)
     n, d = X.shape
@@ -327,3 +358,6 @@ def subset_std(x, mask):
     mean_val = jnp.sum(x * mask) / jnp.sum(mask)
     var = jnp.sum(mask * jnp.square(x - mean_val)) / jnp.sum(mask)
     return jnp.sqrt(var)
+
+def one_step_unlabeled(Y, Xhat, homoskedastic=False, distribution=None, intercept =True):
+    print("one_step_unlabeled is deprecated, instead, call the one_step function.")
