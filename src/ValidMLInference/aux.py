@@ -6,6 +6,7 @@ import jax
 import jax.numpy as jnp
 from jax import grad, jit, hessian
 from jaxopt import LBFGS
+import math
 
 # OLS with additive bias correction 
 def ols_bca(Y, Xhat, fpr, m, intercept = True):
@@ -94,6 +95,57 @@ def ols_bcm(Y, Xhat, fpr, m, intercept = True):
         fpr * (1.0 - fpr) * (Gamma @ (_V + np.outer(b, b)) @ Gamma.T) / m
     return b, V
 
+
+def ols_bcm_topic(Y, Q, W, S, B, k):
+    _b, Gamma, V, d = ols_bc_topic_internal(Y, Q, W, S, B, k)
+
+    eigvals = np.linalg.eigvals(Gamma)
+    rho     = np.max(np.abs(eigvals))
+
+    if rho < 1:
+        b = np.linalg.solve(np.eye(d) - Gamma, _b)
+    else:
+        b = (np.eye(d) + Gamma) @ _b
+
+    return b, V
+
+def ols_bca_topic(Y, Q, W, S, B, k):
+    _b, Gamma, V, d = ols_bc_topic_internal(Y, Q, W, S, B, k)
+
+    b = (np.eye(d) + Gamma) @ _b
+
+    return b, V
+
+def ols_bc_topic_internal(Y, Q, W, S, B, k):
+    Theta = W @ S.T
+
+    Xhat  = np.hstack([Theta, Q])
+
+    d = Xhat.shape[1]
+
+    _b, V, sXX = ols(Y, Xhat)
+
+    n = Y.shape[0] if Y.ndim > 1 else Y.size
+
+    mW = W.mean(axis=0) 
+    Bt = B.T                 
+    M  = Bt * (Bt @ mW)[:, None]  
+
+    Omega = (
+        S @ np.linalg.inv(B @ Bt) @ B
+          @ M
+          @ np.linalg.inv(B @ Bt)
+          @ S.T
+        - (Theta.T @ Theta) / n
+    )
+
+    A = np.zeros((d, d))
+    r = S.shape[0]
+    A[:r, :r] = Omega
+
+    Gamma = (k / math.sqrt(n)) * np.linalg.solve(sXX, A)
+
+    return _b, Gamma, V, d
 
 # One–step estimation using only unlabeled data using JAX
 @jit
