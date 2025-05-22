@@ -1,6 +1,6 @@
 [project]
 name = "ValidMLInference"
-version = "0.2.0"
+version = "0.2.1"
 authors = [
   { name="Konrad Kurczynski", email="konrad.kurczynski@yale.edu"},
   { name="Timothy Christensen", email="timothy.christensen@yale.edu"},

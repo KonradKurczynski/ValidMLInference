@@ -186,7 +186,7 @@ def one_step(Y, Xhat, homoskedastic=False, distribution=None, intercept = True):
     """
     Y    = np.asarray(Y)            
     Xhat = np.asarray(Xhat)         
-    
+
     Y = jnp.ravel(Y)
     Xhat = jnp.asarray(Xhat)
 
@@ -200,7 +200,7 @@ def one_step(Y, Xhat, homoskedastic=False, distribution=None, intercept = True):
 
     return _one_step_core(Y, Xhat, homoskedastic, distribution)
 
-@jit
+@jit(static_argnames=('homoskedastic','distribution'))
 def _one_step_core(Y, Xhat, homoskedastic, distribution):
     """
     JIT‐compiled core: no Python branches on tracers,
