@@ -53,7 +53,7 @@ This procedure first computes the standard OLS estimator on a design matrix (Xha
 
 
 
- ## one_step_unlabeled
+ ## one_step
 
 This method jointly estimates the upstream (measurement) and downstream (regression) models using only the unlabeled likelihood. Leveraging JAX for automatic differentiation and optimization, it minimizes the negative log-likelihood to obtain the regression coefficients. The variance is then approximated via the inverse Hessian at the optimum.
 
