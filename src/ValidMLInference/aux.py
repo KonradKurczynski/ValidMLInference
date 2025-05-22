@@ -35,6 +35,11 @@ def ols_bca(Y, Xhat, fpr, m, intercept = True):
         Variance-covariance matrix of b, adjusted for both sampling error and
         finite-sample measurement-error correction.
     """
+    Y    = np.asarray(Y).flatten()
+    Xhat = np.asarray(Xhat)
+    if Xhat.ndim == 1:
+        Xhat = Xhat.reshape(-1, 1)
+
     if intercept:
         ones = np.ones((Y.shape[0], 1))
         Xhat = np.concatenate([Xhat, ones], axis=1)
@@ -77,6 +82,11 @@ def ols_bcm(Y, Xhat, fpr, m, intercept = True):
         Variance-covariance matrix of b, adjusted for multiplicative correction and
         finite-sample measurement-error correction.
     """
+    Y    = np.asarray(Y).flatten()
+    Xhat = np.asarray(Xhat)
+    if Xhat.ndim == 1:
+        Xhat = Xhat.reshape(-1, 1)
+
     if intercept:
         ones = np.ones((Y.shape[0], 1))
         Xhat = np.concatenate([Xhat, ones], axis=1)
@@ -175,6 +185,11 @@ def one_step(Y, Xhat, homoskedastic=False, distribution=None, intercept = True):
         Estimated variance-covariance matrix for the regression coefficients, computed as the inverse 
         of the Hessian of the objective function.
     """
+    Y    = np.asarray(Y).flatten()
+    Xhat = np.asarray(Xhat)
+    if Xhat.ndim == 1:
+        Xhat = Xhat.reshape(-1, 1)
+        
     if intercept:
         ones = jnp.ones((Y.shape[0], 1))
         Xhat = jnp.concatenate([Xhat, ones], axis=1)
