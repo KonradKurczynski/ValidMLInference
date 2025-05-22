@@ -158,7 +158,6 @@ def ols_bc_topic_internal(Y, Q, W, S, B, k):
     return _b, Gamma, V, d
 
 # One–step estimation using only unlabeled data using JAX
-@jit
 def one_step(Y, Xhat, homoskedastic=False, distribution=None, intercept = True):
     """
     One–step estimator based solely on the unlabeled likelihood (JAX version).
@@ -185,28 +184,43 @@ def one_step(Y, Xhat, homoskedastic=False, distribution=None, intercept = True):
         Estimated variance-covariance matrix for the regression coefficients, computed as the inverse 
         of the Hessian of the objective function.
     """
-    Y    = jnp.ravel(Y)             
+    Y = jnp.ravel(Y)
     Xhat = jnp.asarray(Xhat)
+
     if Xhat.ndim == 1:
         Xhat = Xhat[:, None]
 
     if intercept:
-        ones = jnp.ones((Y.shape[0], 1))
-        Xhat = jnp.concatenate([Xhat, ones], axis=1)
-    else:
-        Xhat = Xhat
+        intercept_col = jnp.ones((Y.shape[0], 1))
+        Xhat = jnp.concatenate([Xhat, intercept_col], axis=1)
 
+
+    return _one_step_core(Y, Xhat, homoskedastic, distribution)
+
+@jit
+def _one_step_core(Y, Xhat, homoskedastic, distribution):
+    """
+    JIT‐compiled core: no Python branches on tracers,
+    just pure JAX operations.
+    """
     def objective(theta):
-        return likelihood_unlabeled_jax(Y, Xhat, theta, homoskedastic, distribution)
-    
-    theta_init = jnp.array(get_starting_values_unlabeled_jax(Y, Xhat, homoskedastic))
+        return likelihood_unlabeled_jax(
+            Y, Xhat, theta, homoskedastic, distribution
+        )
+
+    theta_init = jnp.array(
+        get_starting_values_unlabeled_jax(Y, Xhat, homoskedastic)
+    )
+
     solver = LBFGS(fun=objective, maxiter=200, tol=1e-8)
     sol = solver.run(theta_init)
     theta_opt = sol.params
+
     H = hessian(objective)(theta_opt)
-    d = jnp.asarray(Xhat).shape[1]
+    d = Xhat.shape[1]
     b = theta_opt[:d]
     V = jnp.linalg.inv(H)[:d, :d]
+
     return b, V
 
 # Helper functions
