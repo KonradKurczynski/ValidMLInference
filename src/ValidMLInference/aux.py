@@ -184,6 +184,9 @@ def one_step(Y, Xhat, homoskedastic=False, distribution=None, intercept = True):
         Estimated variance-covariance matrix for the regression coefficients, computed as the inverse 
         of the Hessian of the objective function.
     """
+    Y    = np.asarray(Y)            
+    Xhat = np.asarray(Xhat)         
+    
     Y = jnp.ravel(Y)
     Xhat = jnp.asarray(Xhat)
 
