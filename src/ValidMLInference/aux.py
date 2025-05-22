@@ -324,34 +324,40 @@ def get_starting_values_unlabeled_jax(Y, Xhat, homoskedastic):
     else:
         return jnp.concatenate([b, v, jnp.array([jnp.log(sigma0), jnp.log(sigma1)])])
 
-def ols(Y, X, se=True, intercept = False):
+def ols(Y, X, se=True, intercept=False):
     """
     OLS estimator with a (1/n)-scaled design matrix product.
     
     Computes
         sXX = (1/n) X'X   and   sXY = (1/n) X'Y,
-        b = sXX^{-1} sXY.
+        b   = sXX^{-1} sXY.
     If se==True, it also computes a heteroskedastic‐consistent variance:
-        Ω = sum_i u_i² (x_i x_i')
+        Ω = ∑ u_i² (x_i x_i')
         V = inv(sXX) Ω inv(sXX) / n².
     """
-    if intercept:
-        ones = np.ones((Y.shape[0], 1))
-        X = np.concatenate([X, ones], axis=1)
-    else:
-        X = X
-
+    # ensure numpy arrays and correct shape
     Y = np.asarray(Y).flatten()
     X = np.asarray(X)
+    
+    # if user passed a 1-D regressor, turn it into a column
+    if X.ndim == 1:
+        X = X.reshape(-1, 1)
+    
+    # now optionally append a column of 1’s
+    if intercept:
+        ones = np.ones((X.shape[0], 1))
+        X = np.concatenate([X, ones], axis=1)
+
     n, d = X.shape
     sXX = (1.0 / n) * (X.T @ X)
     sXY = (1.0 / n) * (X.T @ Y)
-    b = np.linalg.solve(sXX, sXY)
+    b   = np.linalg.solve(sXX, sXY)
+
     if se:
         Omega = np.zeros((d, d))
         for i in range(n):
             x_i = X[i, :]
-            u = Y[i] - np.dot(x_i, b)
+            u   = Y[i] - np.dot(x_i, b)
             Omega += (u**2) * np.outer(x_i, x_i)
         inv_sXX = np.linalg.inv(sXX)
         V = inv_sXX @ Omega @ inv_sXX / (n**2)
