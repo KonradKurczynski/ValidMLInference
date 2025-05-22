@@ -6,6 +6,7 @@ import jax
 import jax.numpy as jnp
 from jax import grad, jit, hessian
 from jaxopt import LBFGS
+from functools import partial
 import math
 
 # OLS with additive bias correction 
@@ -200,7 +201,7 @@ def one_step(Y, Xhat, homoskedastic=False, distribution=None, intercept = True):
 
     return _one_step_core(Y, Xhat, homoskedastic, distribution)
 
-@jit(static_argnames=('homoskedastic','distribution'))
+@partial(jit, static_argnames=('homoskedastic','distribution'))
 def _one_step_core(Y, Xhat, homoskedastic, distribution):
     """
     JIT‐compiled core: no Python branches on tracers,
