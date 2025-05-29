@@ -3,3 +3,4 @@ scipy
 jax
 jaxopt
 numdifftools
+patsy

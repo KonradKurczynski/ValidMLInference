@@ -1,11 +1,15 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "ValidMLInference"
-version = "0.2.2"
+version = "0.7.6"
 authors = [
   { name="Konrad Kurczynski", email="konrad.kurczynski@yale.edu"},
   { name="Timothy Christensen", email="timothy.christensen@yale.edu"},
 ]
-description = "RegLabels"
+description = "This package implements bias correction methods for models estimated using synthetic data"
 readme = "README.md"
 requires-python = ">=3.8"
 classifiers = [
@@ -19,8 +23,16 @@ dependencies = [
     "scipy",
     "jax",
     "jaxopt",
-    "numdifftools"
+    "numdifftools",
+    "patsy"
 ]
 
 [project.urls]
 Homepage = "https://github.com/KonradKurczynski/ValidMLInference"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["ValidMLInference*"]
+
+[tool.setuptools.package-data]
+"ValidMLInference" = ["data/*.csv"]
