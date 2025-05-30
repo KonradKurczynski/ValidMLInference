@@ -5,7 +5,7 @@
 This package can be installed with any default package manager, for instance, by typing
 ``` > pip install ValidMLInference ```  into the terminal. The core functions of the package are:
 
-## ols
+# ols
 
 Ordinary Least Squares regression with support for both formula and array interfaces. This function provides a unified interface for fitting linear models using either patsy formulas with pandas DataFrames or raw NumPy arrays.
 
@@ -38,7 +38,7 @@ Ordinary Least Squares regression with support for both formula and array interf
 
 ---
 
-## ols_bca
+# ols_bca
 
 Additive bias-corrected OLS estimator for models with AI/ML-generated binary covariates. This procedure first computes the standard OLS estimator on a design matrix, then applies an additive correction based on an estimate of the false-positive rate computed externally. The method also adjusts the variance estimator with a finite-sample correction term to account for the uncertainty in the bias estimation.
 
@@ -77,7 +77,7 @@ Additive bias-corrected OLS estimator for models with AI/ML-generated binary cov
 
 ---
 
-## ols_bcm
+# ols_bcm
 
 Multiplicative bias-corrected OLS estimator for models with AI/ML-generated binary covariates. This procedure first computes the standard OLS estimator on a design matrix, then applies a multiplicative correction based on an estimate of the false-positive rate computed externally. The method also adjusts the variance estimator with a finite-sample correction term to account for the uncertainty in the bias estimation.
 
@@ -117,7 +117,7 @@ Multiplicative bias-corrected OLS estimator for models with AI/ML-generated bina
 
 ---
 
-## one_step
+# one_step
 
 Joint estimation of upstream (measurement) and downstream (regression) models using only unlabeled data. This method leverages JAX for automatic differentiation and optimization to minimize the negative log-likelihood and obtain regression coefficients. The variance is approximated via the inverse Hessian at the optimum. This approach is particularly useful when true labels are unavailable but AI/ML-generated proxy labels exist.
 
@@ -157,7 +157,7 @@ Joint estimation of upstream (measurement) and downstream (regression) models us
 
 ---
 
-## one_step_gaussian_mixture
+# one_step_gaussian_mixture
 
 Joint estimation using Gaussian mixture models for error terms. This extends the basic one-step estimator by allowing the error distribution to be a mixture of Gaussian components, providing greater flexibility in modeling heterogeneous populations or complex error structures.
 
