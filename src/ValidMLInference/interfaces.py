@@ -3,7 +3,12 @@ import numpy as np
 from importlib import resources
 import jax.numpy as jnp
 import pandas as pd
-from .implementations import RegressionResult, _ols_bca_core, _ols_bcm_core, _one_step_core, _one_step_gaussian_mixture_core, _reorder_intercept_first, _ols_core, _one_step_core_with_treatment_idx
+from .implementations import (
+    RegressionResult, _ols_bca_core, _ols_bcm_core, _one_step_gaussian_mixture_core, 
+    _reorder_intercept_first, _ols_core, _one_step_core_with_treatment_idx,
+    ols_bca_topic as ols_bca_topic_impl, 
+    ols_bcm_topic as ols_bcm_topic_impl)
+from typing import Dict, Any
 
 def ols(
     *,
@@ -60,7 +65,6 @@ def ols(
         X = np.concatenate([X, np.ones((X.shape[0],1))], axis=1)
         if names is not None:
             names = names + ['Intercept']
-
 
     b, V, sXX = _ols_core(Y, X, se=se, intercept=False)  
 
@@ -206,6 +210,150 @@ def ols_bcm(
     return RegressionResult(coef=b_corr, vcov=V_corr, names=names)
 
 
+def ols_bca_topic(
+    *,
+    Y: np.ndarray,
+    Q: np.ndarray,
+    W: np.ndarray,
+    S: np.ndarray,
+    B: np.ndarray,
+    k: float,
+    intercept: bool = True,
+    names: list[str] | None = None,
+) -> RegressionResult:
+    """
+    Bias-corrected additive estimator for topic model regression.
+    
+    Parameters
+    ----------
+    Y : np.ndarray
+        Outcome variable
+    Q : np.ndarray
+        Covariates matrix
+    W : np.ndarray
+        Document-topic distribution matrix
+    S : np.ndarray
+        Topic-vocabulary matrix
+    B : np.ndarray
+        Vocabulary matrix
+    k : float
+        Bias correction parameter
+    intercept : bool, default True
+        Whether to include an intercept term
+    names : list[str], optional
+        Variable names
+        
+    Returns
+    -------
+    result : RegressionResult
+        Contains .coef, .vcov, and .names attributes
+    """
+    Y = np.asarray(Y).ravel()
+    Q = np.asarray(Q)
+    W = np.asarray(W)
+    S = np.asarray(S)
+    B = np.asarray(B)
+    
+    if Q.ndim == 1:
+        Q = Q[:, None]
+    
+    # Add intercept to Q if requested
+    if intercept:
+        Q = np.concatenate([Q, np.ones((Q.shape[0], 1))], axis=1)
+    
+    b, V = ols_bca_topic_impl(Y, Q, W, S, B, k)
+    
+    # Generate names if not provided
+    if names is None:
+        r = S.shape[0]  # number of topics
+        q_vars = Q.shape[1] - (1 if intercept else 0)  # adjust for intercept
+        topic_names = [f"topic_{i+1}" for i in range(r)]
+        covar_names = [f"Q_{i+1}" for i in range(q_vars)]
+        if intercept:
+            covar_names = covar_names + ['Intercept']
+        names = topic_names + covar_names
+    
+    # Reorder to put intercept first if present
+    if intercept:
+        b, V = _reorder_intercept_first(b, V, True)
+        if names is not None:
+            names = [names[-1]] + names[:-1]
+    
+    return RegressionResult(coef=b, vcov=V, names=names)
+
+
+def ols_bcm_topic(
+    *,
+    Y: np.ndarray,
+    Q: np.ndarray,
+    W: np.ndarray,
+    S: np.ndarray,
+    B: np.ndarray,
+    k: float,
+    intercept: bool = True,
+    names: list[str] | None = None,
+) -> RegressionResult:
+    """
+    Bias-corrected multiplicative estimator for topic model regression.
+    
+    Parameters
+    ----------
+    Y : np.ndarray
+        Outcome variable
+    Q : np.ndarray
+        Covariates matrix
+    W : np.ndarray
+        Document-topic distribution matrix
+    S : np.ndarray
+        Topic-vocabulary matrix
+    B : np.ndarray
+        Vocabulary matrix
+    k : float
+        Bias correction parameter
+    intercept : bool, default True
+        Whether to include an intercept term
+    names : list[str], optional
+        Variable names
+        
+    Returns
+    -------
+    result : RegressionResult
+        Contains .coef, .vcov, and .names attributes
+    """
+    Y = np.asarray(Y).ravel()
+    Q = np.asarray(Q)
+    W = np.asarray(W)
+    S = np.asarray(S)
+    B = np.asarray(B)
+    
+    if Q.ndim == 1:
+        Q = Q[:, None]
+    
+    # Add intercept to Q if requested
+    if intercept:
+        Q = np.concatenate([Q, np.ones((Q.shape[0], 1))], axis=1)
+    
+    b, V = ols_bcm_topic_impl(Y, Q, W, S, B, k)
+    
+    # Generate names if not provided
+    if names is None:
+        r = S.shape[0]  # number of topics
+        q_vars = Q.shape[1] - (1 if intercept else 0)  # adjust for intercept
+        topic_names = [f"topic_{i+1}" for i in range(r)]
+        covar_names = [f"Q_{i+1}" for i in range(q_vars)]
+        if intercept:
+            covar_names = covar_names + ['Intercept']
+        names = topic_names + covar_names
+    
+    # Reorder to put intercept first if present
+    if intercept:
+        b, V = _reorder_intercept_first(b, V, True)
+        if names is not None:
+            names = [names[-1]] + names[:-1]
+    
+    return RegressionResult(coef=b, vcov=V, names=names)
+
+
 def one_step(
     *,
     formula: str | None = None,
@@ -280,7 +428,6 @@ def one_step(
     if not (len(unique_vals) == 2 and set(unique_vals) == {0.0, 1.0}):
         treatment_name = names[treatment_idx] if names else f"column {treatment_idx}"
         raise ValueError(f"Treatment variable '{treatment_name}' must be binary (0/1). Found values: {unique_vals}")
-
 
     b, V = _one_step_core_with_treatment_idx(Y, Xhat, treatment_idx, 
                                            homoskedastic=homoskedastic, 
@@ -371,4 +518,18 @@ def load_dataset() -> pd.DataFrame:
     data_path = resources.files("ValidMLInference") / "data" / "remote_work_data.csv"
     return pd.read_csv(data_path)
 
-
+def load_topic_model_data() -> Dict[str, Any]:
+    data_path = resources.files("ValidMLInference") / "data" / "topic_model_data.npz"
+    
+    with resources.as_file(data_path) as file_path:
+        with np.load(file_path) as data:
+            return {
+                'covars': data['covars'],
+                'estimation_data': {'ly': data['estimation_data_ly']},
+                'gamma_draws': data['gamma_draws'],
+                'theta_est_full': data['theta_est_full'],
+                'theta_est_samp': data['theta_est_samp'],
+                'beta_est_full': data['beta_est_full'],
+                'beta_est_samp': data['beta_est_samp'],
+                'lda_data': data['lda_data']
+            }

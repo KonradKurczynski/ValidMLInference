@@ -11,3 +11,4 @@ src/ValidMLInference.egg-info/requires.txt
 src/ValidMLInference.egg-info/top_level.txt
 src/ValidMLInference/data/__init__.py
 src/ValidMLInference/data/remote_work_data.csv
+src/ValidMLInference/data/topic_model_data.npz

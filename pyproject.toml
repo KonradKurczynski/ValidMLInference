@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ValidMLInference"
-version = "1.0.1"
+version = "1.0.7"
 authors = [
   { name="Konrad Kurczynski", email="konrad.kurczynski@yale.edu"},
   { name="Timothy Christensen", email="timothy.christensen@yale.edu"},
@@ -35,4 +35,4 @@ where = ["src"]
 include = ["ValidMLInference*"]
 
 [tool.setuptools.package-data]
-"ValidMLInference" = ["data/*.csv"]
+"ValidMLInference" = ["data/*.csv", "data/*.npz"]
