@@ -87,7 +87,7 @@ def ols_bca(
     fpr: float,
     m: int,
     intercept: bool = True,
-    treatment_var: str | None = None,      # ← new argument
+    generated_var: str | None = None,      # ← new argument
     names: list[str] | None = None,
 ) -> RegressionResult:
     if formula is not None:
@@ -123,10 +123,10 @@ def ols_bca(
         names = names + ['Intercept']
         intercept_in_matrix = True
 
-    if treatment_var is not None:
-        if treatment_var not in names:
-            raise ValueError(f"Treatment variable '{treatment_var}' not found. Available: {names}")
-        target_idx = names.index(treatment_var)
+    if generated_var is not None:
+        if generated_var not in names:
+            raise ValueError(f"Treatment variable '{generated_var}' not found. Available: {names}")
+        target_idx = names.index(generated_var)
     else:
         if intercept_in_matrix:
             idx = names.index('Intercept') if 'Intercept' in names else names.index('(Intercept)')
@@ -153,7 +153,7 @@ def ols_bcm(
     m: int,
     intercept: bool = True,
     names: list[str] | None = None,
-    treatment_variable: str | None = None,  
+    generated_var: str | None = None,  
 ) -> RegressionResult:
     
     if formula is not None:
@@ -192,8 +192,8 @@ def ols_bcm(
             if names is None:
                 names = [f"x{i}" for i in range(1, Xhat.shape[1] + 1)]
 
-    if treatment_variable and treatment_variable in names:
-        target_idx = names.index(treatment_variable)
+    if generated_var and generated_var in names:
+        target_idx = names.index(generated_var)
     else:
         if 'Intercept' in names:
             intercept_pos = names.index('Intercept')
@@ -360,7 +360,7 @@ def one_step(
     data: pd.DataFrame | None = None,
     Y: np.ndarray | None = None,
     Xhat: np.ndarray | None = None,
-    treatment_var: str | None = None,  
+    generated_var: str | None = None,  
     homoskedastic: bool = False,
     distribution=None,
     intercept: bool = True,
@@ -386,15 +386,15 @@ def one_step(
         names = list(Xdf.columns)
         
 
-        if treatment_var is None:
+        if generated_var is None:
             if 'Intercept' in names:
                 treatment_idx = next(i for i, name in enumerate(names) if name != 'Intercept')
             else:
                 treatment_idx = 0
         else:
-            if treatment_var not in names:
-                raise ValueError(f"Treatment variable '{treatment_var}' not found in design matrix. Available: {names}")
-            treatment_idx = names.index(treatment_var)
+            if generated_var not in names:
+                raise ValueError(f"Treatment variable '{generated_var}' not found in design matrix. Available: {names}")
+            treatment_idx = names.index(generated_var)
         
     else:
         if Y is None or Xhat is None:
@@ -404,12 +404,12 @@ def one_step(
         if Xhat.ndim == 1:
             Xhat = Xhat[:, None]
         
-        if treatment_var is not None:
+        if generated_var is not None:
             if names is None:
-                raise ValueError("When using treatment_var with arrays, you must provide names")
-            if treatment_var not in names:
-                raise ValueError(f"Treatment variable '{treatment_var}' not found in names. Available: {names}")
-            treatment_idx = names.index(treatment_var)
+                raise ValueError("When using generated_var with arrays, you must provide names")
+            if generated_var not in names:
+                raise ValueError(f"Treatment variable '{generated_var}' not found in names. Available: {names}")
+            treatment_idx = names.index(generated_var)
         else:
             treatment_idx = 0
         
@@ -444,7 +444,7 @@ def one_step_gaussian_mixture(
     data: pd.DataFrame | None = None,
     Y: np.ndarray | None = None,
     Xhat: np.ndarray | None = None,
-    treatment_var: str | None = None,    # ← new!
+    generated_var: str | None = None,    # ← new!
     k: int = 2,
     homosked: bool = False,
     nguess: int = 10,
@@ -487,12 +487,12 @@ def one_step_gaussian_mixture(
         names = names + ['Intercept']
         intercept_in_matrix = True
 
-    if treatment_var is not None:
-        if treatment_var not in names:
+    if generated_var is not None:
+        if generated_var not in names:
             raise ValueError(
-                f"Treatment variable '{treatment_var}' not found. Available: {names}"
+                f"Treatment variable '{generated_var}' not found. Available: {names}"
             )
-        tidx = names.index(treatment_var)
+        tidx = names.index(generated_var)
         if tidx != 0:
             order = [tidx] + [i for i in range(len(names)) if i != tidx]
             Xhat = Xhat[:, order]
@@ -514,11 +514,11 @@ def one_step_gaussian_mixture(
 
     return RegressionResult(coef=b, vcov=V, names=names)
 
-def load_dataset() -> pd.DataFrame:
+def remote_work_data() -> pd.DataFrame:
     data_path = resources.files("ValidMLInference") / "data" / "remote_work_data.csv"
     return pd.read_csv(data_path)
 
-def load_topic_model_data() -> Dict[str, Any]:
+def topic_model_data() -> Dict[str, Any]:
     data_path = resources.files("ValidMLInference") / "data" / "topic_model_data.npz"
     
     with resources.as_file(data_path) as file_path:
