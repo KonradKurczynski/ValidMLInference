@@ -165,7 +165,7 @@ Design matrix of covariates.
 - **`generated_var`** (`str`, optional)\
 Name of the binary treatment variable. If not specified, defaults to the first non-intercept variable.
 - **`homoskedastic`** (`bool`, optional, default: `False`)\
-If True, assumes a common error variance; otherwise, the error variance is allowed to vary with the true latent binary variable.
+If `True`, assumes a common error variance; otherwise, the error variance is allowed to vary with the true latent binary variable.
 - **`distribution`** (`callable`, optional)\
 Custom distribution for error terms. Must be a JAX-compatible PDF function with signature (x, loc, scale). Defaults to Normal(0,1).
 - **`intercept`** (`bool`, optional, default: `True`)\
