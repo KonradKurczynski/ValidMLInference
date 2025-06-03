@@ -120,7 +120,7 @@ Estimated false positive rate of misclassification, used to correct the OLS esti
 Size of the external sample used to estimate the classifier's false-positive rate. Can be set to a large number when the false-positive rate is known exactly.
 - **`intercept`** (`bool`, optional, default: `True`)\
 Whether to include an intercept term in the model.
-- **`generated_variable`** (`str`, optional)\
+- **`generated_var`** (`str`, optional)\
 Name of the treatment variable to apply bias correction to. If not specified, defaults to the first non-intercept variable.
 - **`names`** (`list[str]`, optional)\
 Variable names for the coefficients. If not provided, default names are generated.
