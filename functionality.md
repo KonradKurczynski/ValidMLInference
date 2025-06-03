@@ -73,7 +73,7 @@ Size of the external sample used to estimate the classifier's false-positive rat
 - **`intercept`** (`bool`, optional, default: `True`)\
 Whether to include an intercept term in the model.
 - **`generated_var`** (`str`, optional)\
-Name of the treatment variable to apply bias correction to. If not specified, defaults to the first non-intercept variable.
+Name of the ML-generated variable to apply bias correction to. If not specified, defaults to the first non-intercept variable.
 - **`names`** (`list[str]`, optional)\
 Variable names for the coefficients. If not provided, default names are generated.
 
@@ -121,7 +121,7 @@ Size of the external sample used to estimate the classifier's false-positive rat
 - **`intercept`** (`bool`, optional, default: `True`)\
 Whether to include an intercept term in the model.
 - **`generated_var`** (`str`, optional)\
-Name of the treatment variable to apply bias correction to. If not specified, defaults to the first non-intercept variable.
+Name of the ML-generated variable to apply bias correction to. If not specified, defaults to the first non-intercept variable.
 - **`names`** (`list[str]`, optional)\
 Variable names for the coefficients. If not provided, default names are generated.
 
@@ -163,7 +163,7 @@ Design matrix of covariates.
 ----------
 
 - **`generated_var`** (`str`, optional)\
-Name of the binary treatment variable. If not specified, defaults to the first non-intercept variable.
+Name of the binary ML-generated variable. If not specified, defaults to the first non-intercept variable.
 - **`homoskedastic`** (`bool`, optional, default: `False`)\
 If `True`, assumes a common error variance; otherwise, the error variance is allowed to vary with the true latent binary variable.
 - **`distribution`** (`callable`, optional)\
@@ -211,7 +211,7 @@ Design matrix of covariates.
 ----------
 
 - **`generated_var`** (`str`, optional)\
-Name of the binary treatment variable. If not specified, defaults to the first variable.
+Name of the binary ML-generated variable. If not specified, defaults to the first variable.
 - **`k`** (`int`, optional, default: `2`)\
 Number of components in the Gaussian mixture model.
 - **`homosked`** (`bool`, optional, default: `False`)\
