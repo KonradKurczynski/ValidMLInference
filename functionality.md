@@ -60,7 +60,7 @@ Design matrix of covariates.
 ----------
 
 - **`fpr`** (`float`)\
-False positive rate of misclassification, used to correct the OLS estimates.
+Estimated false positive rate of misclassification, used to correct the OLS estimates.
 - **`m`** (`int`)\
 Size of the external sample used to estimate the classifier's false-positive rate. Can be set to a large number when the false-positive rate is known exactly.
 - **`intercept`** (`bool`, optional, default: `True`)\
@@ -100,7 +100,7 @@ Design matrix of covariates.
 ----------
 
 - **`fpr`** (`float`)\
-False positive rate of misclassification, used to correct the OLS estimates.
+Estimated false positive rate of misclassification, used to correct the OLS estimates.
 - **`m`** (`int`)\
 Size of the external sample used to estimate the classifier's false-positive rate. Can be set to a large number when the false-positive rate is known exactly.
 - **`intercept`** (`bool`, optional, default: `True`)\
