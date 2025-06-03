@@ -1,6 +1,0 @@
-numpy
-scipy
-jax
-jaxopt
-numdifftools
-patsy
