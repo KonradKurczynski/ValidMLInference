@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ValidMLInference"
-version = "1.1.0"
+version = "3.1.1"
 authors = [
   { name="Konrad Kurczynski", email="konrad.kurczynski@yale.edu"},
   { name="Timothy Christensen", email="timothy.christensen@yale.edu"},
@@ -24,7 +24,8 @@ dependencies = [
     "jax",
     "jaxopt",
     "numdifftools",
-    "patsy"
+    "patsy",
+    "pandas"
 ]
 
 [project.urls]

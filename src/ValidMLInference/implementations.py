@@ -375,66 +375,95 @@ def unpack_theta(θ, d, k, homosked):
     return (b, (w00,w01,w10,w11), ω0, ω1, μ0, μ1, σ0, σ1)
 
 def get_starting_values_unlabeled_gaussian_mixture(Y, Xhat, k, homosked):
-    Y    = jnp.asarray(Y).ravel()
+    Y = jnp.asarray(Y).ravel()
     Xhat = jnp.asarray(Xhat)
     if Xhat.ndim == 1:
         Xhat = Xhat[:, None]
     n, d = Xhat.shape
 
-
-    b = jnp.linalg.lstsq(Xhat, Y, rcond=None)[0]           
-
-
-    u     = Y - Xhat @ b
+    b = ols_jax(Y, Xhat, se=False)
+    
+    u = Y - Xhat @ b
     sigma = jnp.std(u)
-
-
-    μ    = Xhat @ b
-
-    p11 = norm.pdf(Y, loc=μ,               scale=sigma)    
-    p10 = norm.pdf(Y, loc=μ - b[0],        scale=sigma)    
-    p01 = norm.pdf(Y, loc=μ + b[0],        scale=sigma)
-    p00 = norm.pdf(Y, loc=μ,               scale=sigma)
-    is1 = (Xhat[:, 0] == 1.0)
-
-    X_imp = jnp.where(is1, (p11 > p10).astype(float),
-                            (p01 > p00).astype(float))
-
-
-    mask00 = (Xhat[:,0]==0) & (X_imp==0)
-    mask01 = (Xhat[:,0]==0) & (X_imp==1)
-    mask10 = (Xhat[:,0]==1) & (X_imp==0)
-    mask11 = (Xhat[:,0]==1) & (X_imp==1)
-
+    
+    μ = Xhat @ b
+    treatment_effect = b[0]  
+    
+    p11 = jnp.exp(-0.5 * jnp.square((Y - μ) / sigma)) / (jnp.sqrt(2 * jnp.pi) * sigma)
+    p10 = jnp.exp(-0.5 * jnp.square((Y - (μ - treatment_effect)) / sigma)) / (jnp.sqrt(2 * jnp.pi) * sigma)
+    p01 = jnp.exp(-0.5 * jnp.square((Y - (μ + treatment_effect)) / sigma)) / (jnp.sqrt(2 * jnp.pi) * sigma)
+    p00 = jnp.exp(-0.5 * jnp.square((Y - μ) / sigma)) / (jnp.sqrt(2 * jnp.pi) * sigma)
+    
+    is_treated = (Xhat[:, 0] == 1.0)
+    X_imputed = jnp.where(is_treated, 
+                         (p11 > p10).astype(jnp.float32),
+                         (p01 > p00).astype(jnp.float32))
+    
+    mask00 = (Xhat[:, 0] == 0) & (X_imputed == 0)
+    mask01 = (Xhat[:, 0] == 0) & (X_imputed == 1)
+    mask10 = (Xhat[:, 0] == 1) & (X_imputed == 0)
+    mask11 = (Xhat[:, 0] == 1) & (X_imputed == 1)
+    
     w00 = jnp.maximum(mask00.mean(), 1e-3)
     w01 = jnp.maximum(mask01.mean(), 1e-3)
     w10 = jnp.maximum(mask10.mean(), 1e-3)
     w11 = jnp.maximum(mask11.mean(), 1e-3)
+    
+    w = jnp.array([w00, w01, w10, w11])
+    w = w / jnp.sum(w)
+    
+    v = jnp.log(w[:3] / w[3])
+    
+    u0 = u[X_imputed == 0]
+    u1 = u[X_imputed == 1]
+    σ0_base = jnp.where(u0.size > 0, jnp.std(u0), sigma)
+    σ1_base = jnp.where(u1.size > 0, jnp.std(u1), sigma)
+    
 
-    w    = jnp.array([w00, w01, w10, w11])
-    w    = w / jnp.sum(w)
+    σ0_base = jnp.where(jnp.isnan(σ0_base), σ1_base, σ0_base)
+    σ1_base = jnp.where(jnp.isnan(σ1_base), σ0_base, σ1_base)
+    
+    if homosked:
 
-    v    = jnp.log(w[:3] / w[3])
+        v0 = jnp.zeros(k-1) + 0.01 * jnp.arange(k-1)  
+        
+        mean_increments = 0.1 * jnp.arange(k-1)  
+        μ0 = mean_increments
+        
+        p_val = jnp.mean(X_imputed)
+        σ_combined = σ1_base * p_val + σ0_base * (1.0 - p_val)
+        σ0_log = jnp.log(σ_combined) * jnp.ones(k)
+        
+        return jnp.concatenate([
+            b,                    
+            v,                    
+            v0,                   
+            μ0,                   
+            σ0_log               
+        ])
+    
+    else:
+        v0 = jnp.zeros(k-1) + 0.01 * jnp.arange(k-1)
+        v1 = jnp.zeros(k-1) + 0.01 * jnp.arange(k-1) * 0.5 
+        mean_increments_0 = 0.1 * jnp.arange(k-1)
+        mean_increments_1 = 0.15 * jnp.arange(k-1)  
+        μ0 = mean_increments_0
+        μ1 = mean_increments_1
+        
+        σ0_log = jnp.log(σ0_base) * jnp.ones(k)
+        σ1_log = jnp.log(σ1_base) * jnp.ones(k)
+        
+        return jnp.concatenate([
+            b,                    
+            v,
+            v0,                   
+            v1,                   
+            μ0,                   
+            μ1,                   
+            σ0_log,              
+            σ1_log               
+        ])
 
-    u0 = u[X_imp == 0]
-    u1 = u[X_imp == 1]
-    σ0 = jnp.where(u0.size>0, jnp.std(u0), sigma)
-    σ1 = jnp.where(u1.size>0, jnp.std(u1), sigma)
-
-    parts = [
-      b,                       
-      v,                       
-      jnp.zeros(k-1),          
-      jnp.zeros(k-1),          
-      jnp.zeros(k-1),          
-      jnp.zeros(k-1)           
-    ]
-
-    parts.append(jnp.log(σ0) * jnp.ones(k))
-    if not homosked:
-        parts.append(jnp.log(σ1) * jnp.ones(k))
-
-    return jnp.concatenate(parts)
 
 
 def likelihood_unlabeled_gaussian_mixture(θ, Y, Xhat, k, homosked):
@@ -457,26 +486,46 @@ def likelihood_unlabeled_gaussian_mixture(θ, Y, Xhat, k, homosked):
 
 
 def _one_step_gaussian_mixture_core(Y, Xhat, k=2, homosked=False,
-                                    nguess=10, maxiter=100, seed=0):
-
+                                   nguess=20, maxiter=100, seed=0):
     Yj = jnp.asarray(Y).ravel()
     Xj = jnp.asarray(Xhat)
 
-    θ0   = get_starting_values_unlabeled_gaussian_mixture(Yj, Xj, k, homosked)
+    θ0 = get_starting_values_unlabeled_gaussian_mixture(Yj, Xj, k, homosked)
+    
     solver = LBFGS(fun=lambda th: likelihood_unlabeled_gaussian_mixture(th, Yj, Xj, k, homosked),
-                   maxiter=maxiter)
-    key, subkeys = jr.PRNGKey(seed), jr.split(jr.PRNGKey(seed), nguess)
+                   maxiter=maxiter, tol=1e-12)
+    
+    key = jr.PRNGKey(seed)
+    subkeys = jr.split(key, nguess)
+    
     best_loss, best_θ = jnp.inf, θ0
-    for sk in subkeys:
-        θ_try = θ0 + 0.01 * jr.normal(sk, θ0.shape)
-        out   = solver.run(θ_try)
-        if out.state.value < best_loss:
-            best_loss, best_θ = out.state.value, out.params
-
-    H   = hessian(lambda th: likelihood_unlabeled_gaussian_mixture(th, Yj, Xj, k, homosked))(best_θ)
+    
+    for i, sk in enumerate(subkeys):
+        if i == 0:
+            θ_try = θ0
+        else:
+            noise_scale = 0.05 + 0.02 * (i / nguess)  
+            noise = jr.normal(sk, θ0.shape) * noise_scale
+            
+            d = Xj.shape[1]
+            noise = noise.at[:d].multiply(0.5)  
+            noise = noise.at[d:d+3].multiply(0.3)  
+            
+            θ_try = θ0 + noise
+        
+        try:
+            out = solver.run(θ_try)
+            if out.state.value < best_loss and jnp.isfinite(out.state.value):
+                best_loss, best_θ = out.state.value, out.params
+        except:
+            continue
+    
+    H = hessian(lambda th: likelihood_unlabeled_gaussian_mixture(th, Yj, Xj, k, homosked))(best_θ)
     cov = jnp.linalg.pinv(H)
-    b_jax = best_θ[: Xj.shape[1]]
-    V_jax = cov[: Xj.shape[1], : Xj.shape[1]]
+    
+    b_jax = best_θ[:Xj.shape[1]]
+    V_jax = cov[:Xj.shape[1], :Xj.shape[1]]
+    
     return np.array(b_jax), np.array(V_jax)
 
 def _reorder_intercept_first(b, V, intercept):
