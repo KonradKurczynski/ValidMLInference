@@ -6,6 +6,7 @@ import pandas as pd
 from .implementations import (
     RegressionResult, _ols_bca_core, _ols_bcm_core, _one_step_gaussian_mixture_core, 
     _reorder_intercept_first, _ols_core, _one_step_core_with_treatment_idx,
+    _standardize_coefficient_order,
     ols_bca_topic as ols_bca_topic_impl, 
     ols_bcm_topic as ols_bcm_topic_impl)
 from typing import Dict, Any
@@ -76,6 +77,9 @@ def ols(
             if names is not None:
                 names = [names[-1]] + names[:-1]
 
+    # Standardize coefficient ordering for consistency
+    b, V, names = _standardize_coefficient_order(b, V, names)
+
     return RegressionResult(coef=b, vcov=V, names=names)
 
 def ols_bca(
@@ -139,6 +143,9 @@ def ols_bca(
     if intercept:
         b_corr, V_corr = _reorder_intercept_first(b_corr, V_corr, True)
         names         = [names[-1]] + names[:-1]
+
+    # Standardize coefficient ordering for consistency
+    b_corr, V_corr, names = _standardize_coefficient_order(b_corr, V_corr, names)
 
     return RegressionResult(coef=b_corr, vcov=V_corr, names=names)
 
@@ -206,6 +213,9 @@ def ols_bcm(
     if intercept:
          b_corr, V_corr = _reorder_intercept_first(b_corr, V_corr, True)
          names         = [names[-1]] + names[:-1]
+    
+    # Standardize coefficient ordering for consistency
+    b_corr, V_corr, names = _standardize_coefficient_order(b_corr, V_corr, names)
     
     return RegressionResult(coef=b_corr, vcov=V_corr, names=names)
 
@@ -279,6 +289,9 @@ def ols_bca_topic(
         if names is not None:
             names = [names[-1]] + names[:-1]
     
+    # Standardize coefficient ordering for consistency
+    b, V, names = _standardize_coefficient_order(b, V, names)
+    
     return RegressionResult(coef=b, vcov=V, names=names)
 
 
@@ -350,6 +363,9 @@ def ols_bcm_topic(
         b, V = _reorder_intercept_first(b, V, True)
         if names is not None:
             names = [names[-1]] + names[:-1]
+    
+    # Standardize coefficient ordering for consistency
+    b, V, names = _standardize_coefficient_order(b, V, names)
     
     return RegressionResult(coef=b, vcov=V, names=names)
 
@@ -436,6 +452,9 @@ def one_step(
         b, V = _reorder_intercept_first(b, V, True)
         names         = [names[-1]] + names[:-1]
    
+    # Standardize coefficient ordering for consistency
+    b, V, names = _standardize_coefficient_order(b, V, names)
+   
     return RegressionResult(coef=b, vcov=V, names=names)
 
 def one_step_gaussian_mixture(
@@ -511,6 +530,9 @@ def one_step_gaussian_mixture(
 
     b, V = _reorder_intercept_first(b, V, True)
     names = [names[-1]] + names[:-1]
+
+    # Standardize coefficient ordering for consistency
+    b, V, names = _standardize_coefficient_order(b, V, names)
 
     return RegressionResult(coef=b, vcov=V, names=names)
 

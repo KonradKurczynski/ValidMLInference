@@ -538,6 +538,65 @@ def _reorder_intercept_first(b, V, intercept):
     V_new = jnp.take(jnp.take(V, order, axis=0), order, axis=1)
     return b_new, V_new
 
+def _standardize_coefficient_order(b, V, names):
+    """
+    Standardize coefficient ordering: intercept first, then alphabetical.
+    
+    Parameters
+    ----------
+    b : array-like
+        Coefficients
+    V : array-like
+        Covariance matrix
+    names : list[str] or None
+        Variable names
+        
+    Returns
+    -------
+    tuple
+        Reordered (coefficients, covariance_matrix, names)
+    """
+    b = np.asarray(b)
+    V = np.asarray(V)
+    
+    if names is None:
+        return b, V, names
+    
+    # Standardize intercept name and identify intercept position
+    intercept_names = ['Intercept', '(Intercept)']
+    intercept_idx = None
+    standardized_names = []
+    
+    for i, name in enumerate(names):
+        if name in intercept_names:
+            intercept_idx = i
+            standardized_names.append('Intercept')
+        else:
+            standardized_names.append(name)
+    
+    # Create ordering: intercept first, then alphabetical
+    if intercept_idx is not None:
+        # Get non-intercept names with their indices
+        non_intercept_items = [(i, name) for i, name in enumerate(standardized_names) if name != 'Intercept']
+        # Sort by name alphabetically
+        non_intercept_items.sort(key=lambda x: x[1])
+        
+        # Create new ordering: intercept first, then alphabetical
+        order = [intercept_idx] + [item[0] for item in non_intercept_items]
+        new_names = ['Intercept'] + [item[1] for item in non_intercept_items]
+    else:
+        # No intercept, just sort alphabetically
+        name_index_pairs = [(i, name) for i, name in enumerate(standardized_names)]
+        name_index_pairs.sort(key=lambda x: x[1])
+        order = [item[0] for item in name_index_pairs]
+        new_names = [item[1] for item in name_index_pairs]
+    
+    # Reorder coefficients and covariance matrix
+    b_new = b[order]
+    V_new = V[np.ix_(order, order)]
+    
+    return b_new, V_new, new_names
+
 def summarize_coefs(b, V, names=None, alpha=0.05):
 
     b = np.asarray(b).ravel()
